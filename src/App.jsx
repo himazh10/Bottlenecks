@@ -19,6 +19,49 @@ const App = () => {
 
   const isAdmin = activeTab === 'admin-login';
   const isRegister = activeTab === 'register';
+  const [lecturerTab, setLecturerTab] = useState('profile');
+  const [studentTab, setStudentTab] = useState('profile');
+  const [projects, setProjects] = useState([
+    {
+      id: 1,
+      name: 'Web Development Bootcamp',
+      code: 'WDB2026',
+      description: 'Spring 2026 web dev project',
+      status: 'ongoing',
+      archived: false,
+      students: [
+        { id: 's1', name: 'Maya Kim', skills: { 'Web Dev': 4, 'React': 5 } },
+        { id: 's2', name: 'Jon Lee', skills: { 'Web Dev': 3, 'CSS': 4 } },
+      ],
+    },
+    {
+      id: 2,
+      name: 'AI Research Initiative',
+      code: 'AIR2026',
+      description: 'Machine learning research project',
+      status: 'ongoing',
+      archived: false,
+      students: [
+        { id: 's3', name: 'Aisha Khan', skills: { 'ML': 5, 'Python': 5 } },
+      ],
+    },
+    {
+      id: 3,
+      name: 'Mobile App Development',
+      code: 'MAD2026',
+      description: 'Cross-platform app development',
+      status: 'archived',
+      archived: true,
+      students: [
+        { id: 's4', name: 'Liam Chen', skills: { 'Mobile': 4, 'UX': 3 } },
+      ],
+    },
+  ]);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [newProjectForm, setNewProjectForm] = useState({ name: '', description: '' });
+  const [showStudentJoin, setShowStudentJoin] = useState(false);
+  const [studentJoinCode, setStudentJoinCode] = useState('');
+  const [studentJoinName, setStudentJoinName] = useState('');
   const actionLabel = isAdmin ? 'Sign in as Admin' : isRegister ? 'Create account' : 'Log in';
   const roleLabel = isAdmin ? 'Admin' : role === 'student' ? 'Student' : 'Lecturer';
 
@@ -52,11 +95,58 @@ const App = () => {
     setRole('student');
   };
 
+  const generateProjectCode = () => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  };
+
+  const handleCreateProject = (e) => {
+    e.preventDefault();
+    if (!newProjectForm.name.trim()) {
+      setStatusMessage('Project name is required');
+      return;
+    }
+    const newProject = {
+      id: projects.length + 1,
+      name: newProjectForm.name,
+      description: newProjectForm.description,
+      code: generateProjectCode(),
+      status: 'ongoing',
+      archived: false,
+      students: [],
+    };
+    setProjects([...projects, newProject]);
+    setStatusMessage(`Project created! Code: ${newProject.code}`);
+    setNewProjectForm({ name: '', description: '' });
+    setShowCreateProject(false);
+  };
+
+  // auto-dismiss status messages after a short timeout
+  useEffect(() => {
+    if (!statusMessage) return;
+    const t = setTimeout(() => setStatusMessage(''), 8000);
+    return () => clearTimeout(t);
+  }, [statusMessage]);
+
+  const [selectedProject, setSelectedProject] = useState(null);
+
+  const handleManageProject = (project) => {
+    setSelectedProject(project);
+  };
+
+  const handleCloseManage = () => {
+    setSelectedProject(null);
+  };
+
   return (
     <div className="page-shell">
       <div className="background-lights"></div>
       <nav className="floating-nav">
-        <div className="brand" aria-label="Bottlenecks">
+        <div className="brand" aria-label={authUser && authUser.role === 'lecturer' ? 'Lecturer Portal' : authUser && authUser.role === 'student' ? 'Student Portal' : 'Bottlenecks'}>
           <svg className="brand-mark" width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs>
               <linearGradient id="g1" x1="0" x2="1">
@@ -67,11 +157,85 @@ const App = () => {
             <rect x="2" y="2" width="20" height="20" rx="5" fill="url(#g1)" opacity="0.95" />
             <path d="M7 9c1.5-2 5-2 6 0 1 2 1 6-3 8" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
           </svg>
-          <span className="brand-text">Bottlenecks</span>
+          <span className="brand-text">{authUser && authUser.role === 'lecturer' ? 'Lecturer Portal' : authUser && authUser.role === 'student' ? 'Student Portal' : 'Bottlenecks'}</span>
         </div>
-        <div className="nav-links">
-          <a href="#features">Features</a>
-          <a href="#vision">Vision</a>
+        <div className={`nav-links ${authUser && (authUser.role === 'lecturer' || authUser.role === 'student') ? 'nav-lecturer' : ''}`}>
+          {authUser && authUser.role === 'lecturer' ? (
+            <>
+              <button
+                className={`nav-action ${lecturerTab === 'profile' ? 'selected' : ''}`}
+                type="button"
+                onClick={() => setLecturerTab('profile')}
+              >
+                <span className="nav-label">Lecturer Profile</span>
+              </button>
+
+              <button
+                className={`nav-action ${lecturerTab === 'projects' ? 'selected' : ''}`}
+                type="button"
+                onClick={() => setLecturerTab('projects')}
+              >
+                <span className="nav-label">Projects</span>
+              </button>
+
+              <button
+                className={`nav-action ${lecturerTab === 'skills' ? 'selected' : ''}`}
+                type="button"
+                onClick={() => setLecturerTab('skills')}
+              >
+                <span className="nav-label">Skills</span>
+              </button>
+
+              <button
+                className={`nav-action ${lecturerTab === 'archived' ? 'selected' : ''}`}
+                type="button"
+                onClick={() => setLecturerTab('archived')}
+              >
+                <span className="nav-label">Archived Projects</span>
+              </button>
+            </>
+          ) : !authUser ? (
+            <>
+              <a href="#features">Features</a>
+              <a href="#vision">Vision</a>
+            </>
+          ) : null}
+
+          {authUser && authUser.role === 'student' && (
+            <>
+              <button
+                className={`nav-action ${studentTab === 'profile' ? 'selected' : ''}`}
+                type="button"
+                onClick={() => setStudentTab('profile')}
+              >
+                <span className="nav-label">Student Profile</span>
+              </button>
+
+              <button
+                className={`nav-action ${studentTab === 'projects' ? 'selected' : ''}`}
+                type="button"
+                onClick={() => setStudentTab('projects')}
+              >
+                <span className="nav-label">Projects</span>
+              </button>
+
+              <button
+                className={`nav-action ${studentTab === 'skills' ? 'selected' : ''}`}
+                type="button"
+                onClick={() => setStudentTab('skills')}
+              >
+                <span className="nav-label">Skills</span>
+              </button>
+
+              <button
+                className={`nav-action ${studentTab === 'archived' ? 'selected' : ''}`}
+                type="button"
+                onClick={() => setStudentTab('archived')}
+              >
+                <span className="nav-label">Archived Projects</span>
+              </button>
+            </>
+          )}
 
           {!authUser ? (
             <>
@@ -117,11 +281,7 @@ const App = () => {
             </>
           ) : (
             <>
-              {authUser.role === 'lecturer' && (
-                <a className="nav-action" href="#projects">
-                  <span className="nav-label">Projects</span>
-                </a>
-              )}
+              {/* removed duplicate Projects link — primary nav already contains Projects for lecturers */}
               <div className="profile-inline">
                 <div className="profile-badge">{(authUser.name || authUser.email || 'User').split(' ')[0].slice(0,2).toUpperCase()}</div>
                 <div className="profile-info">
@@ -135,7 +295,8 @@ const App = () => {
         </div>
       </nav>
 
-      <main className="hero-layout">
+      {(!authUser) && (
+        <main className="hero-layout">
         <section className="hero-copy">
           <span className="eyebrow">Project Team AI</span>
           <h1>Next-gen student team formation and task allocation.</h1>
@@ -159,7 +320,7 @@ const App = () => {
                 <p className="modal-sub">{isAdmin ? 'Admin access only.' : isRegister ? `Create a ${role} account` : `Sign in to your ${role} account`}</p>
 
                 <form className="modal-form" onSubmit={handleSubmit}>
-                  {!isAdmin && !isRegister && (
+                  {!isAdmin && (
                     <div className="role-select">
                       <label className={`role-pill ${role === 'student' ? 'selected' : ''}`} onClick={() => setRole('student')}>Student</label>
                       <label className={`role-pill ${role === 'lecturer' ? 'selected' : ''}`} onClick={() => setRole('lecturer')}>Lecturer</label>
@@ -204,21 +365,404 @@ const App = () => {
 
                   <div className="modal-actions">
                     <button type="submit" className="btn btn-glow">{isAdmin ? 'Sign in' : isRegister ? 'Create account' : 'Sign in'}</button>
-                    <button type="button" className="btn btn-secondary" onClick={() => setActiveTab(isRegister ? 'login' : 'register')}>{isRegister ? 'Switch to Login' : 'Create account'}</button>
+                    {!isAdmin && (
+                      <button type="button" className="btn btn-secondary" onClick={() => setActiveTab(isRegister ? 'login' : 'register')}>{isRegister ? 'Switch to Login' : 'Create account'}</button>
+                    )}
                   </div>
                 </form>
               </div>
             </div>
           )}
-      </main>
+        </main>
+      )}
+      
+      {/* Student portal */}
+      {authUser && authUser.role === 'student' && (
+        <>
+          {studentTab === 'profile' && (
+            <section id="student-profile" className="profile-section">
+              <div className="profile-card">
+                <div className="profile-card-glow"></div>
+                <div className="profile-card-inner">
+                  <div className="profile-header-banner">
+                    <svg className="banner-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.5"/>
+                      <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+
+                  <div className="profile-avatar-large">{(authUser.name || authUser.email || 'St').split(' ')[0].slice(0,2).toUpperCase()}</div>
+
+                  <div className="profile-card-content">
+                    <h2 className="profile-card-title">Student Profile</h2>
+
+                    <div className="profile-details-grid">
+                      <div className="detail-item">
+                        <div className="detail-icon">👤</div>
+                        <div className="detail-info">
+                          <div className="detail-label">Name</div>
+                          <div className="detail-value">{authUser.name || authUser.email}</div>
+                        </div>
+                      </div>
+
+                      <div className="detail-item">
+                        <div className="detail-icon">✉️</div>
+                        <div className="detail-info">
+                          <div className="detail-label">Email</div>
+                          <div className="detail-value">{authUser.email}</div>
+                        </div>
+                      </div>
+
+                      <div className="detail-item">
+                        <div className="detail-icon">🎯</div>
+                        <div className="detail-info">
+                          <div className="detail-label">Role</div>
+                          <div className="detail-value">{authUser.role}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {studentTab === 'projects' && (
+            <section id="student-projects" className="projects-section">
+              <div className="projects-header">
+                <h2>Projects</h2>
+                <button className="btn-create-project" onClick={() => setShowStudentJoin(!showStudentJoin)}>
+                  <span>Join Project</span>
+                </button>
+              </div>
+
+              {showStudentJoin && (
+                <div className="create-project-form-container">
+                  <div className="create-project-form">
+                    <h3>Join Project by Code</h3>
+                    <form onSubmit={(e) => {
+                      e.preventDefault();
+                      const code = studentJoinCode.trim();
+                      const name = authUser.name || studentJoinName.trim();
+                      if (!code) { setStatusMessage('Please enter a project code'); return; }
+                      const proj = projects.find(p => p.code.toUpperCase() === code.toUpperCase() && !p.archived);
+                      if (!proj) { setStatusMessage('Project not found for that code'); return; }
+                      const newStudent = { id: `s_${Date.now()}`, name: name || 'Student', skills: {} };
+                      setProjects(projects.map(p => p.id === proj.id ? { ...p, students: [...(p.students||[]), newStudent] } : p));
+                      setStatusMessage(`Joined ${proj.name} as ${newStudent.name}`);
+                      setStudentJoinCode(''); setStudentJoinName(''); setShowStudentJoin(false);
+                    }}>
+                      {!authUser.name && (
+                        <label>
+                          Your name
+                          <input value={studentJoinName} onChange={(e) => setStudentJoinName(e.target.value)} placeholder="Your full name" required />
+                        </label>
+                      )}
+                      <label>
+                        Project code
+                        <input value={studentJoinCode} onChange={(e) => setStudentJoinCode(e.target.value)} placeholder="ABCDEFG1" required />
+                      </label>
+                      <div className="form-actions">
+                        <button type="submit" className="btn-submit">Join</button>
+                        <button type="button" className="btn-cancel" onClick={() => setShowStudentJoin(false)}>Cancel</button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              <div className="projects-grid">
+                {projects.filter(p => !p.archived).map((project) => (
+                  <div key={project.id} className="project-card-floating">
+                    <div className="project-card-glow"></div>
+                    <div className="project-card-inner">
+                      <div className="project-status-badge">{project.archived ? 'archived' : project.status}</div>
+                      <h3 className="project-card-title">{project.name}</h3>
+                      <p className="project-card-description">{project.description}</p>
+
+                      <div className="project-code-section">
+                        <div className="code-label">Join Code</div>
+                        <div className="code-display">{project.code}</div>
+                      </div>
+
+                      <div className="project-stats">
+                        <div className="stat">
+                          <span className="stat-icon">👥</span>
+                          <span className="stat-value">{(project.students || []).length} students</span>
+                        </div>
+                        <div className="stat">
+                          <span className="stat-icon">📋</span>
+                          <span className="stat-value">{project.archived ? 'Archived' : 'Active'}</span>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {studentTab === 'skills' && (
+            <section id="skills" className="skills-section">
+              <h2>Skills</h2>
+              <div className="skills-grid">
+                <div className="skill-pill">Machine Learning</div>
+                <div className="skill-pill">Web Dev</div>
+                <div className="skill-pill">Data Science</div>
+              </div>
+            </section>
+          )}
+
+          {studentTab === 'archived' && (
+            <section id="archived" className="archived-section">
+              <h2>Archived Projects</h2>
+              <div className="projects-grid">
+                {projects.filter(p => p.archived).map(p => (
+                  <div key={p.id} className="project-card-floating">
+                    <div className="project-card-glow"></div>
+                    <div className="project-card-inner">
+                      <div className="project-status-badge">archived</div>
+                      <h3 className="project-card-title">{p.name}</h3>
+                      <p className="project-card-description">{p.description}</p>
+                      <div className="project-code-section">
+                        <div className="code-label">Join Code</div>
+                        <div className="code-display">{p.code}</div>
+                      </div>
+                      <div className="project-stats">
+                        <div className="stat">
+                          <span className="stat-icon">👥</span>
+                          <span className="stat-value">{(p.students||[]).length} students</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      )}
 
       {/* Clean body: minimal layout; show projects for lecturer */}
       {authUser && authUser.role === 'lecturer' && (
-        <section id="projects" className="projects-section">
-          <div className="project-card">Course Projects — Spring 2026</div>
-          <div className="project-card">Supervised Projects — Group Allocations</div>
-          <div className="project-card">Pending Approvals</div>
-        </section>
+        <>
+          {lecturerTab === 'profile' && (
+            <section id="profile" className="profile-section">
+              <div className="profile-card">
+                <div className="profile-card-glow"></div>
+                <div className="profile-card-inner">
+                  <div className="profile-header-banner">
+                    <svg className="banner-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.5"/>
+                      <path d="M4 20c0-4.4 3.6-8 8-8s8 3.6 8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    </svg>
+                  </div>
+                  
+                  <div className="profile-avatar-large">{(authUser.name || authUser.email || 'Lec').split(' ')[0].slice(0,2).toUpperCase()}</div>
+                  
+                  <div className="profile-card-content">
+                    <h2 className="profile-card-title">Lecturer Profile</h2>
+                    
+                    <div className="profile-details-grid">
+                      <div className="detail-item">
+                        <div className="detail-icon">👤</div>
+                        <div className="detail-info">
+                          <div className="detail-label">Name</div>
+                          <div className="detail-value">{authUser.name || authUser.email}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="detail-item">
+                        <div className="detail-icon">✉️</div>
+                        <div className="detail-info">
+                          <div className="detail-label">Email</div>
+                          <div className="detail-value">{authUser.email}</div>
+                        </div>
+                      </div>
+                      
+                      <div className="detail-item">
+                        <div className="detail-icon">🎓</div>
+                        <div className="detail-info">
+                          <div className="detail-label">Role</div>
+                          <div className="detail-value">{authUser.role}</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {lecturerTab === 'projects' && (
+            <section id="projects" className="projects-section">
+              <div className="projects-header">
+                <h2>Projects</h2>
+                <button 
+                  className="btn-create-project"
+                  onClick={() => setShowCreateProject(!showCreateProject)}
+                >
+                  <span>+ Create Project</span>
+                </button>
+              </div>
+
+              {showCreateProject && (
+                <div className="create-project-form-container">
+                  <div className="create-project-form">
+                    <h3>Create New Project</h3>
+                    <form onSubmit={handleCreateProject}>
+                      <div>
+                        <label>Project Name</label>
+                        <input
+                          type="text"
+                          placeholder="Enter project name..."
+                          value={newProjectForm.name}
+                          onChange={(e) => setNewProjectForm({ ...newProjectForm, name: e.target.value })}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label>Description</label>
+                        <textarea
+                          placeholder="Enter project description..."
+                          value={newProjectForm.description}
+                          onChange={(e) => setNewProjectForm({ ...newProjectForm, description: e.target.value })}
+                          rows="4"
+                        />
+                      </div>
+                      <div className="form-actions">
+                        <button type="submit" className="btn-submit">Create Project</button>
+                        <button 
+                          type="button" 
+                          className="btn-cancel"
+                          onClick={() => setShowCreateProject(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {statusMessage && <div className="status-alert">{statusMessage}</div>}
+
+              {selectedProject ? (
+                <div className="manage-project-panel">
+                  <div className="manage-header">
+                    <button className="btn-cancel" onClick={handleCloseManage}>← Back</button>
+                    <h3>Manage: {selectedProject.name}</h3>
+                    <div className="code-display" style={{marginLeft:'auto'}}>{selectedProject.code}</div>
+                  </div>
+
+                  <div className="manage-body">
+                    <table className="students-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Skills</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedProject.students && selectedProject.students.length > 0 ? (
+                          selectedProject.students.map((s) => (
+                            <tr key={s.id}>
+                              <td>{s.name}</td>
+                              <td>
+                                {Object.entries(s.skills || {}).map(([skill, level]) => (
+                                  <div key={skill} className="skill-row">
+                                    <span className="skill-name">{skill}</span>
+                                    <span className="skill-stars">{'★'.repeat(level)}{'☆'.repeat(Math.max(0, 5 - level))}</span>
+                                  </div>
+                                ))}
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr><td colSpan="2">No students have joined this project yet.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : (
+                <div className="projects-grid">
+                  {projects.filter(p => !p.archived).map((project) => (
+                    <div key={project.id} className="project-card-floating">
+                      <div className="project-card-glow"></div>
+                      <div className="project-card-inner">
+                        <div className="project-status-badge">{project.archived ? 'archived' : project.status}</div>
+                        <h3 className="project-card-title">{project.name}</h3>
+                        <p className="project-card-description">{project.description}</p>
+
+                        <div className="project-code-section">
+                          <div className="code-label">Join Code</div>
+                          <div className="code-display">{project.code}</div>
+                        </div>
+
+                        <div className="project-stats">
+                          <div className="stat">
+                            <span className="stat-icon">👥</span>
+                            <span className="stat-value">{(project.students || []).length} students</span>
+                          </div>
+                          <div className="stat">
+                            <span className="stat-icon">📋</span>
+                            <span className="stat-value">{project.archived ? 'Archived' : 'Active'}</span>
+                          </div>
+                        </div>
+
+                        <div style={{display:'flex', gap:'0.6rem'}}>
+                          <button className="btn-project-action" onClick={() => handleManageProject(project)}>Manage Project</button>
+                          
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {lecturerTab === 'skills' && (
+            <section id="skills" className="skills-section">
+              <h2>Skills</h2>
+              <div className="skills-grid">
+                <div className="skill-pill">Machine Learning</div>
+                <div className="skill-pill">Web Dev</div>
+                <div className="skill-pill">Data Science</div>
+              </div>
+            </section>
+          )}
+
+          {lecturerTab === 'archived' && (
+            <section id="archived" className="archived-section">
+              <h2>Archived Projects</h2>
+              <div className="projects-grid">
+                {projects.filter(p => p.archived).map(p => (
+                  <div key={p.id} className="project-card-floating">
+                    <div className="project-card-glow"></div>
+                    <div className="project-card-inner">
+                      <div className="project-status-badge">archived</div>
+                      <h3 className="project-card-title">{p.name}</h3>
+                      <p className="project-card-description">{p.description}</p>
+                      <div className="project-code-section">
+                        <div className="code-label">Join Code</div>
+                        <div className="code-display">{p.code}</div>
+                      </div>
+                      <div className="project-stats">
+                        <div className="stat">
+                          <span className="stat-icon">👥</span>
+                          <span className="stat-value">{(p.students||[]).length} students</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
     </div>
   );
