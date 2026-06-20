@@ -11,8 +11,20 @@ const App = () => {
   const [statusMessage, setStatusMessage] = useState('');
   const [authUser, setAuthUser] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('authUser')) || null;
+      const stored = JSON.parse(localStorage.getItem('authUser'));
+      if (
+        stored &&
+        typeof stored === 'object' &&
+        typeof stored.email === 'string' &&
+        typeof stored.role === 'string' &&
+        ['student', 'lecturer', 'admin'].includes(stored.role)
+      ) {
+        return stored;
+      }
+      localStorage.removeItem('authUser');
+      return null;
     } catch (e) {
+      localStorage.removeItem('authUser');
       return null;
     }
   });
@@ -72,10 +84,20 @@ const App = () => {
     const payload = Object.fromEntries(formData.entries());
 
     const userRole = isAdmin ? 'admin' : role;
+    if (!VALID_ROLES.includes(userRole)) {
+      setStatusMessage('Invalid role selected.');
+      return;
+    }
+    const email = (payload.email || '').trim().slice(0, MAX_EMAIL_LENGTH);
+    const name = (payload.name || email.split('@')[0] || '').trim().slice(0, MAX_NAME_LENGTH);
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setStatusMessage('Please enter a valid email address.');
+      return;
+    }
     const user = {
       role: userRole,
-      email: payload.email,
-      name: payload.name || (payload.email ? payload.email.split('@')[0] : ''),
+      email: email,
+      name: name,
     };
     setAuthUser(user);
     localStorage.setItem('authUser', JSON.stringify(user));
@@ -97,23 +119,36 @@ const App = () => {
 
   const generateProjectCode = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const randomValues = new Uint32Array(8);
+    crypto.getRandomValues(randomValues);
     let code = '';
     for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
+      code += chars.charAt(randomValues[i] % chars.length);
     }
     return code;
   };
 
+  const MAX_NAME_LENGTH = 100;
+  const MAX_DESCRIPTION_LENGTH = 500;
+  const MAX_EMAIL_LENGTH = 254;
+  const VALID_ROLES = ['student', 'lecturer', 'admin'];
+
   const handleCreateProject = (e) => {
     e.preventDefault();
-    if (!newProjectForm.name.trim()) {
+    const trimmedName = newProjectForm.name.trim().slice(0, MAX_NAME_LENGTH);
+    const trimmedDesc = newProjectForm.description.trim().slice(0, MAX_DESCRIPTION_LENGTH);
+    if (!trimmedName) {
       setStatusMessage('Project name is required');
+      return;
+    }
+    if (trimmedName.length < 2) {
+      setStatusMessage('Project name must be at least 2 characters');
       return;
     }
     const newProject = {
       id: projects.length + 1,
-      name: newProjectForm.name,
-      description: newProjectForm.description,
+      name: trimmedName,
+      description: trimmedDesc,
       code: generateProjectCode(),
       status: 'ongoing',
       archived: false,
@@ -442,9 +477,9 @@ const App = () => {
                     <h3>Join Project by Code</h3>
                     <form onSubmit={(e) => {
                       e.preventDefault();
-                      const code = studentJoinCode.trim();
-                      const name = authUser.name || studentJoinName.trim();
-                      if (!code) { setStatusMessage('Please enter a project code'); return; }
+                      const code = studentJoinCode.trim().slice(0, 8);
+                      const name = (authUser.name || studentJoinName.trim()).slice(0, MAX_NAME_LENGTH);
+                      if (!code || !/^[A-Z0-9]{1,8}$/i.test(code)) { setStatusMessage('Please enter a valid project code (alphanumeric, up to 8 characters)'); return; }
                       const proj = projects.find(p => p.code.toUpperCase() === code.toUpperCase() && !p.archived);
                       if (!proj) { setStatusMessage('Project not found for that code'); return; }
                       const newStudent = { id: `s_${Date.now()}`, name: name || 'Student', skills: {} };
