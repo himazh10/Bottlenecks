@@ -94,9 +94,9 @@ export const loadAuthUser = () => {
 };
 
 export const SKILL_TIERS = {
-  common: { label: 'Common', weight: 1, color: '#8b9cc7' },
-  rare: { label: 'Rare', weight: 3, color: '#6b67ff' },
-  diamond: { label: 'Diamond', weight: 5, color: '#30d6ff' },
+  common: { label: 'Common', weight: 1, color: '#c0c0c0' },
+  rare: { label: 'Rare', weight: 3, color: '#ff4444' },
+  diamond: { label: 'Diamond', weight: 5, color: '#9b59b6' },
 };
 
 export const SKILL_STATUS = {

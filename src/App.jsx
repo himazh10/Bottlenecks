@@ -36,6 +36,8 @@ const App = () => {
   const [skillSubmissions, setSkillSubmissions] = useState([]);
   const [newSkillName, setNewSkillName] = useState('');
   const [newSkillDescription, setNewSkillDescription] = useState('');
+  const [showAddSkill, setShowAddSkill] = useState(false);
+  const [registeredUsers, setRegisteredUsers] = useState([]);
   const actionLabel = getActionLabel(isAdmin, isRegister);
   const roleLabel = getRoleLabel(isAdmin, role);
 
@@ -71,7 +73,11 @@ const App = () => {
     setStatusMessage(`Skill "${submission.skillName}" submitted for admin approval`);
     setNewSkillName('');
     setNewSkillDescription('');
+    setShowAddSkill(false);
   };
+
+  const registeredStudents = registeredUsers.filter((u) => u.role === 'student');
+  const registeredLecturers = registeredUsers.filter((u) => u.role === 'lecturer');
 
   const handleApproveSkill = (skillId, tier) => {
     setSkillSubmissions(
@@ -103,6 +109,12 @@ const App = () => {
     setAuthUser(user);
     localStorage.setItem('authUser', JSON.stringify(user));
     setStatusMessage(buildStatusMessage(user, isAdmin, isRegister));
+    if (!isAdmin) {
+      setRegisteredUsers((prev) => {
+        if (prev.some((u) => u.email === user.email)) return prev;
+        return [...prev, { ...user, registeredAt: new Date().toISOString() }];
+      });
+    }
     form.reset();
     setActiveTab(null);
   };
@@ -538,54 +550,69 @@ const App = () => {
             <section id="skills" className="skills-section">
               <div className="skills-header">
                 <h2>My Skills</h2>
-                <div className="student-rating-display">
-                  <span className="rating-label">Student Rating</span>
-                  <span className="rating-value">{calculateStudentRating(myApprovedSkills)}%</span>
+                <div className="skills-header-right">
+                  <div className="student-rating-display">
+                    <span className="rating-label">Student Rating</span>
+                    <span className="rating-value">{calculateStudentRating(myApprovedSkills)}%</span>
+                  </div>
+                  <button className="btn-add-skill" onClick={() => setShowAddSkill(!showAddSkill)}>
+                    <span>+ Add Skill</span>
+                  </button>
                 </div>
               </div>
 
               {statusMessage && <div className="status-alert">{statusMessage}</div>}
 
-              <div className="skill-submit-form-container">
-                <div className="skill-submit-form">
-                  <h3>Submit a New Skill</h3>
-                  <form onSubmit={handleSubmitSkill}>
-                    <label>
-                      Skill Name
-                      <input
-                        type="text"
-                        placeholder="e.g. React, Python, Data Analysis..."
-                        value={newSkillName}
-                        onChange={(e) => setNewSkillName(e.target.value)}
-                        required
-                      />
-                    </label>
-                    <label>
-                      Description (optional)
-                      <input
-                        type="text"
-                        placeholder="Brief description of your proficiency..."
-                        value={newSkillDescription}
-                        onChange={(e) => setNewSkillDescription(e.target.value)}
-                      />
-                    </label>
-                    <button type="submit" className="btn-submit">Submit for Approval</button>
-                  </form>
+              {showAddSkill && (
+                <div className="skill-submit-form-container">
+                  <div className="skill-submit-form">
+                    <h3>Submit a New Skill</h3>
+                    <form onSubmit={handleSubmitSkill}>
+                      <label>
+                        Skill Name
+                        <input
+                          type="text"
+                          placeholder="e.g. React, Python, Data Analysis..."
+                          value={newSkillName}
+                          onChange={(e) => setNewSkillName(e.target.value)}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Description (optional)
+                        <input
+                          type="text"
+                          placeholder="Brief description of your proficiency..."
+                          value={newSkillDescription}
+                          onChange={(e) => setNewSkillDescription(e.target.value)}
+                        />
+                      </label>
+                      <div className="form-actions">
+                        <button type="submit" className="btn-submit">Submit for Approval</button>
+                        <button type="button" className="btn-cancel" onClick={() => setShowAddSkill(false)}>Cancel</button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {myApprovedSkills.length > 0 && (
                 <div className="skills-category">
                   <h3>Approved Skills</h3>
-                  <div className="skills-grid">
+                  <div className="skill-cards-grid">
                     {myApprovedSkills.map((skill) => {
                       const tierInfo = getSkillTierBadge(skill.tier);
                       return (
-                        <div key={skill.id} className={`skill-pill-tier skill-tier-${skill.tier}`}>
-                          <span className="skill-pill-name">{skill.skillName}</span>
-                          <span className="skill-tier-badge" style={{ background: tierInfo.color }}>
-                            {tierInfo.label}
-                          </span>
+                        <div key={skill.id} className={`skill-card skill-card-${skill.tier}`}>
+                          <div className="skill-card-glow"></div>
+                          <div className="skill-card-inner">
+                            <div className="skill-card-tier-badge" style={{ background: tierInfo.color }}>
+                              {tierInfo.label}
+                            </div>
+                            <h4 className="skill-card-title">{skill.skillName}</h4>
+                            {skill.description && <p className="skill-card-desc">{skill.description}</p>}
+                            <div className="skill-card-weight">Weight: {tierInfo.weight}</div>
+                          </div>
                         </div>
                       );
                     })}
@@ -596,11 +623,14 @@ const App = () => {
               {myPendingSkills.length > 0 && (
                 <div className="skills-category">
                   <h3>Pending Approval</h3>
-                  <div className="skills-grid">
+                  <div className="skill-cards-grid">
                     {myPendingSkills.map((skill) => (
-                      <div key={skill.id} className="skill-pill-tier skill-tier-pending">
-                        <span className="skill-pill-name">{skill.skillName}</span>
-                        <span className="skill-tier-badge skill-badge-pending">Pending</span>
+                      <div key={skill.id} className="skill-card skill-card-pending">
+                        <div className="skill-card-inner">
+                          <div className="skill-card-tier-badge skill-badge-pending">Pending</div>
+                          <h4 className="skill-card-title">{skill.skillName}</h4>
+                          {skill.description && <p className="skill-card-desc">{skill.description}</p>}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -610,11 +640,14 @@ const App = () => {
               {myRejectedSkills.length > 0 && (
                 <div className="skills-category">
                   <h3>Rejected</h3>
-                  <div className="skills-grid">
+                  <div className="skill-cards-grid">
                     {myRejectedSkills.map((skill) => (
-                      <div key={skill.id} className="skill-pill-tier skill-tier-rejected">
-                        <span className="skill-pill-name">{skill.skillName}</span>
-                        <span className="skill-tier-badge skill-badge-rejected">Rejected</span>
+                      <div key={skill.id} className="skill-card skill-card-rejected">
+                        <div className="skill-card-inner">
+                          <div className="skill-card-tier-badge skill-badge-rejected">Rejected</div>
+                          <h4 className="skill-card-title">{skill.skillName}</h4>
+                          {skill.description && <p className="skill-card-desc">{skill.description}</p>}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -622,7 +655,7 @@ const App = () => {
               )}
 
               {myApprovedSkills.length === 0 && myPendingSkills.length === 0 && myRejectedSkills.length === 0 && (
-                <p className="empty-state">No skills submitted yet. Submit your first skill above!</p>
+                <p className="empty-state">No skills submitted yet. Click "+ Add Skill" to submit your first skill!</p>
               )}
             </section>
           )}
@@ -841,16 +874,21 @@ const App = () => {
             <section id="skills" className="skills-section">
               <h2>Skills Overview</h2>
               {allApproved.length > 0 ? (
-                <div className="skills-grid">
+                <div className="skill-cards-grid">
                   {allApproved.map((skill) => {
                     const tierInfo = getSkillTierBadge(skill.tier);
                     return (
-                      <div key={skill.id} className={`skill-pill-tier skill-tier-${skill.tier}`}>
-                        <span className="skill-pill-name">{skill.skillName}</span>
-                        <span className="skill-tier-badge" style={{ background: tierInfo.color }}>
-                          {tierInfo.label}
-                        </span>
-                        <span className="skill-pill-student">{skill.studentName}</span>
+                      <div key={skill.id} className={`skill-card skill-card-${skill.tier}`}>
+                        <div className="skill-card-glow"></div>
+                        <div className="skill-card-inner">
+                          <div className="skill-card-tier-badge" style={{ background: tierInfo.color }}>
+                            {tierInfo.label}
+                          </div>
+                          <h4 className="skill-card-title">{skill.skillName}</h4>
+                          {skill.description && <p className="skill-card-desc">{skill.description}</p>}
+                          <div className="skill-card-student">{skill.studentName}</div>
+                          <div className="skill-card-weight">Weight: {tierInfo.weight}</div>
+                        </div>
                       </div>
                     );
                   })}
@@ -908,6 +946,20 @@ const App = () => {
               onClick={() => setAdminTab('all-skills')}
             >
               <span className="nav-label">All Approved Skills</span>
+            </button>
+            <button
+              className={`nav-action ${adminTab === 'students' ? 'selected' : ''}`}
+              type="button"
+              onClick={() => setAdminTab('students')}
+            >
+              <span className="nav-label">Students</span>
+            </button>
+            <button
+              className={`nav-action ${adminTab === 'lecturers' ? 'selected' : ''}`}
+              type="button"
+              onClick={() => setAdminTab('lecturers')}
+            >
+              <span className="nav-label">Lecturers</span>
             </button>
           </nav>
 
@@ -968,33 +1020,77 @@ const App = () => {
               {allApproved.length === 0 ? (
                 <p className="empty-state">No skills have been approved yet.</p>
               ) : (
-                <table className="admin-skills-table">
-                  <thead>
-                    <tr>
-                      <th>Skill</th>
-                      <th>Student</th>
-                      <th>Tier</th>
-                      <th>Weight</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {allApproved.map((skill) => {
-                      const tierInfo = getSkillTierBadge(skill.tier);
-                      return (
-                        <tr key={skill.id}>
-                          <td>{skill.skillName}</td>
-                          <td>{skill.studentName}</td>
-                          <td>
-                            <span className="skill-tier-badge" style={{ background: tierInfo.color }}>
-                              {tierInfo.label}
-                            </span>
-                          </td>
-                          <td>{SKILL_TIERS[skill.tier]?.weight || 0}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <div className="skill-cards-grid">
+                  {allApproved.map((skill) => {
+                    const tierInfo = getSkillTierBadge(skill.tier);
+                    return (
+                      <div key={skill.id} className={`skill-card skill-card-${skill.tier}`}>
+                        <div className="skill-card-glow"></div>
+                        <div className="skill-card-inner">
+                          <div className="skill-card-tier-badge" style={{ background: tierInfo.color }}>
+                            {tierInfo.label}
+                          </div>
+                          <h4 className="skill-card-title">{skill.skillName}</h4>
+                          <div className="skill-card-student">{skill.studentName}</div>
+                          <div className="skill-card-weight">Weight: {tierInfo.weight}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
+          {adminTab === 'students' && (
+            <section className="admin-section">
+              <h2>Registered Students</h2>
+              {registeredStudents.length === 0 ? (
+                <p className="empty-state">No students have registered yet.</p>
+              ) : (
+                <div className="admin-users-grid">
+                  {registeredStudents.map((user) => {
+                    const userApproved = skillSubmissions.filter(
+                      (s) => s.studentEmail === user.email && s.status === SKILL_STATUS.approved
+                    );
+                    const rating = calculateStudentRating(userApproved);
+                    return (
+                      <div key={user.email} className="admin-user-card">
+                        <div className="admin-user-card-inner">
+                          <div className="admin-user-avatar">{getProfileInitials(user.name || user.email)}</div>
+                          <h4 className="admin-user-name">{user.name || user.email}</h4>
+                          <div className="admin-user-detail"><span className="detail-lbl">Email</span> {user.email}</div>
+                          {user.major && <div className="admin-user-detail"><span className="detail-lbl">Major</span> {user.major}</div>}
+                          <div className="admin-user-detail"><span className="detail-lbl">Rating</span> <span className="rating-value-small">{rating}%</span></div>
+                          <div className="admin-user-detail"><span className="detail-lbl">Approved Skills</span> {userApproved.length}</div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+
+          {adminTab === 'lecturers' && (
+            <section className="admin-section">
+              <h2>Registered Lecturers</h2>
+              {registeredLecturers.length === 0 ? (
+                <p className="empty-state">No lecturers have registered yet.</p>
+              ) : (
+                <div className="admin-users-grid">
+                  {registeredLecturers.map((user) => (
+                    <div key={user.email} className="admin-user-card">
+                      <div className="admin-user-card-inner">
+                        <div className="admin-user-avatar">{getProfileInitials(user.name || user.email)}</div>
+                        <h4 className="admin-user-name">{user.name || user.email}</h4>
+                        <div className="admin-user-detail"><span className="detail-lbl">Email</span> {user.email}</div>
+                        {user.department && <div className="admin-user-detail"><span className="detail-lbl">Department</span> {user.department}</div>}
+                        <div className="admin-user-detail"><span className="detail-lbl">Role</span> Lecturer</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </section>
           )}

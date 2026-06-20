@@ -345,19 +345,19 @@ describe('getSkillTierBadge', () => {
   it('returns correct config for common tier', () => {
     const badge = getSkillTierBadge('common');
     expect(badge.label).toBe('Common');
-    expect(badge.color).toBe('#8b9cc7');
+    expect(badge.color).toBe('#c0c0c0');
   });
 
   it('returns correct config for rare tier', () => {
     const badge = getSkillTierBadge('rare');
     expect(badge.label).toBe('Rare');
-    expect(badge.color).toBe('#6b67ff');
+    expect(badge.color).toBe('#ff4444');
   });
 
   it('returns correct config for diamond tier', () => {
     const badge = getSkillTierBadge('diamond');
     expect(badge.label).toBe('Diamond');
-    expect(badge.color).toBe('#30d6ff');
+    expect(badge.color).toBe('#9b59b6');
   });
 
   it('returns unknown for invalid tier', () => {

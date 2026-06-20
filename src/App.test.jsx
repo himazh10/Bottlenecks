@@ -227,7 +227,7 @@ describe('App – student navigation tabs', () => {
     const user = await loginAs('student');
     await user.click(screen.getByText('Skills', { selector: '.nav-label' }));
     expect(screen.getByText('My Skills')).toBeInTheDocument();
-    expect(screen.getByText('Submit a New Skill')).toBeInTheDocument();
+    expect(screen.getByText('+ Add Skill')).toBeInTheDocument();
   });
 
   it('can switch to Archived Projects tab', async () => {
@@ -439,20 +439,27 @@ describe('App – student skill submission', () => {
     return user;
   }
 
-  it('shows skill submission form', async () => {
-    await goToStudentSkills();
-    expect(screen.getByText('Submit a New Skill')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('e.g. React, Python, Data Analysis...')).toBeInTheDocument();
-  });
+  async function openAddSkillForm(user) {
+    await user.click(screen.getByText('+ Add Skill'));
+  }
 
-  it('shows student rating as 0% initially', async () => {
+  it('shows + Add Skill button and rating', async () => {
     await goToStudentSkills();
+    expect(screen.getByText('+ Add Skill')).toBeInTheDocument();
     expect(screen.getByText('Student Rating')).toBeInTheDocument();
     expect(screen.getByText('0%')).toBeInTheDocument();
   });
 
+  it('opens submission form when + Add Skill clicked', async () => {
+    const user = await goToStudentSkills();
+    await openAddSkillForm(user);
+    expect(screen.getByText('Submit a New Skill')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('e.g. React, Python, Data Analysis...')).toBeInTheDocument();
+  });
+
   it('submits a skill and shows it as pending', async () => {
     const user = await goToStudentSkills();
+    await openAddSkillForm(user);
     await user.type(screen.getByPlaceholderText('e.g. React, Python, Data Analysis...'), 'Python');
     await user.click(screen.getByText('Submit for Approval'));
 
@@ -463,24 +470,25 @@ describe('App – student skill submission', () => {
 
   it('shows status message after submission', async () => {
     const user = await goToStudentSkills();
+    await openAddSkillForm(user);
     await user.type(screen.getByPlaceholderText('e.g. React, Python, Data Analysis...'), 'React');
     await user.click(screen.getByText('Submit for Approval'));
 
     expect(screen.getByText(/Skill "React" submitted for admin approval/)).toBeInTheDocument();
   });
 
-  it('clears the form after submission', async () => {
+  it('hides form after submission', async () => {
     const user = await goToStudentSkills();
-    const input = screen.getByPlaceholderText('e.g. React, Python, Data Analysis...');
-    await user.type(input, 'JavaScript');
+    await openAddSkillForm(user);
+    await user.type(screen.getByPlaceholderText('e.g. React, Python, Data Analysis...'), 'JavaScript');
     await user.click(screen.getByText('Submit for Approval'));
 
-    expect(input).toHaveValue('');
+    expect(screen.queryByText('Submit a New Skill')).not.toBeInTheDocument();
   });
 
   it('shows empty state when no skills submitted', async () => {
     await goToStudentSkills();
-    expect(screen.getByText('No skills submitted yet. Submit your first skill above!')).toBeInTheDocument();
+    expect(screen.getByText(/No skills submitted yet/)).toBeInTheDocument();
   });
 
   it('shows student rating and approved skills count on profile', async () => {
@@ -509,10 +517,12 @@ describe('App – admin portal', () => {
     expect(screen.getByText('Admin Portal')).toBeInTheDocument();
   });
 
-  it('shows skill approvals and all approved skills tabs', async () => {
+  it('shows all four admin tabs', async () => {
     await loginAsAdmin();
     expect(screen.getByText('Skill Approvals')).toBeInTheDocument();
     expect(screen.getByText('All Approved Skills')).toBeInTheDocument();
+    expect(screen.getByText('Students')).toBeInTheDocument();
+    expect(screen.getByText('Lecturers')).toBeInTheDocument();
   });
 
   it('shows empty state when no pending skills', async () => {
@@ -524,5 +534,19 @@ describe('App – admin portal', () => {
     const user = await loginAsAdmin();
     await user.click(screen.getByText('All Approved Skills', { selector: '.nav-label' }));
     expect(screen.getByText('No skills have been approved yet.')).toBeInTheDocument();
+  });
+
+  it('shows Students tab with empty state', async () => {
+    const user = await loginAsAdmin();
+    await user.click(screen.getByText('Students', { selector: '.nav-label' }));
+    expect(screen.getByText('Registered Students')).toBeInTheDocument();
+    expect(screen.getByText('No students have registered yet.')).toBeInTheDocument();
+  });
+
+  it('shows Lecturers tab with empty state', async () => {
+    const user = await loginAsAdmin();
+    await user.click(screen.getByText('Lecturers', { selector: '.nav-label' }));
+    expect(screen.getByText('Registered Lecturers')).toBeInTheDocument();
+    expect(screen.getByText('No lecturers have registered yet.')).toBeInTheDocument();
   });
 });
