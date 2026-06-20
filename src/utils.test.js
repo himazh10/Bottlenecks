@@ -10,6 +10,10 @@ import {
   getActionLabel,
   getRoleLabel,
   loadAuthUser,
+  SKILL_TIERS,
+  SKILL_STATUS,
+  calculateStudentRating,
+  getSkillTierBadge,
 } from './utils.js';
 
 describe('tabConfig', () => {
@@ -197,8 +201,8 @@ describe('getBrandText', () => {
     expect(getBrandText(null)).toBe('Bottlenecks');
   });
 
-  it('returns "Bottlenecks" for admin role', () => {
-    expect(getBrandText({ role: 'admin' })).toBe('Bottlenecks');
+  it('returns "Admin Portal" for admin role', () => {
+    expect(getBrandText({ role: 'admin' })).toBe('Admin Portal');
   });
 });
 
@@ -253,5 +257,117 @@ describe('loadAuthUser', () => {
   it('returns null for stored "null"', () => {
     localStorage.setItem('authUser', 'null');
     expect(loadAuthUser()).toBeNull();
+  });
+});
+
+describe('SKILL_TIERS', () => {
+  it('defines common, rare, and diamond tiers', () => {
+    expect(SKILL_TIERS).toHaveProperty('common');
+    expect(SKILL_TIERS).toHaveProperty('rare');
+    expect(SKILL_TIERS).toHaveProperty('diamond');
+  });
+
+  it('has correct weights: common=1, rare=3, diamond=5', () => {
+    expect(SKILL_TIERS.common.weight).toBe(1);
+    expect(SKILL_TIERS.rare.weight).toBe(3);
+    expect(SKILL_TIERS.diamond.weight).toBe(5);
+  });
+
+  it('has labels and colors for each tier', () => {
+    for (const tier of Object.values(SKILL_TIERS)) {
+      expect(tier).toHaveProperty('label');
+      expect(tier).toHaveProperty('color');
+      expect(typeof tier.label).toBe('string');
+      expect(typeof tier.color).toBe('string');
+    }
+  });
+});
+
+describe('SKILL_STATUS', () => {
+  it('defines pending, approved, and rejected statuses', () => {
+    expect(SKILL_STATUS.pending).toBe('pending');
+    expect(SKILL_STATUS.approved).toBe('approved');
+    expect(SKILL_STATUS.rejected).toBe('rejected');
+  });
+});
+
+describe('calculateStudentRating', () => {
+  it('returns 0 for empty skills array', () => {
+    expect(calculateStudentRating([])).toBe(0);
+  });
+
+  it('returns 0 for null/undefined', () => {
+    expect(calculateStudentRating(null)).toBe(0);
+    expect(calculateStudentRating(undefined)).toBe(0);
+  });
+
+  it('returns 100 for all diamond skills', () => {
+    const skills = [
+      { tier: 'diamond' },
+      { tier: 'diamond' },
+    ];
+    expect(calculateStudentRating(skills)).toBe(100);
+  });
+
+  it('returns 20 for all common skills', () => {
+    const skills = [
+      { tier: 'common' },
+      { tier: 'common' },
+    ];
+    expect(calculateStudentRating(skills)).toBe(20);
+  });
+
+  it('returns 60 for all rare skills', () => {
+    const skills = [
+      { tier: 'rare' },
+      { tier: 'rare' },
+    ];
+    expect(calculateStudentRating(skills)).toBe(60);
+  });
+
+  it('calculates mixed tiers correctly', () => {
+    const skills = [
+      { tier: 'common' },
+      { tier: 'rare' },
+      { tier: 'diamond' },
+    ];
+    const expected = ((1 + 3 + 5) / (3 * 5)) * 100;
+    expect(calculateStudentRating(skills)).toBe(Math.round(expected * 10) / 10);
+  });
+
+  it('handles unknown tiers as 0 weight', () => {
+    const skills = [{ tier: 'mythic' }];
+    expect(calculateStudentRating(skills)).toBe(0);
+  });
+});
+
+describe('getSkillTierBadge', () => {
+  it('returns correct config for common tier', () => {
+    const badge = getSkillTierBadge('common');
+    expect(badge.label).toBe('Common');
+    expect(badge.color).toBe('#8b9cc7');
+  });
+
+  it('returns correct config for rare tier', () => {
+    const badge = getSkillTierBadge('rare');
+    expect(badge.label).toBe('Rare');
+    expect(badge.color).toBe('#6b67ff');
+  });
+
+  it('returns correct config for diamond tier', () => {
+    const badge = getSkillTierBadge('diamond');
+    expect(badge.label).toBe('Diamond');
+    expect(badge.color).toBe('#30d6ff');
+  });
+
+  it('returns unknown for invalid tier', () => {
+    const badge = getSkillTierBadge('mythic');
+    expect(badge.label).toBe('Unknown');
+    expect(badge.color).toBe('#555');
+  });
+
+  it('returns unknown for null/undefined', () => {
+    expect(getSkillTierBadge(null).label).toBe('Unknown');
+    expect(getSkillTierBadge(undefined).label).toBe('Unknown');
   });
 });

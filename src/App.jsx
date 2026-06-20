@@ -10,6 +10,10 @@ import {
   getActionLabel,
   getRoleLabel,
   loadAuthUser,
+  SKILL_TIERS,
+  SKILL_STATUS,
+  calculateStudentRating,
+  getSkillTierBadge,
 } from './utils.js';
 
 const App = () => {
@@ -28,8 +32,66 @@ const App = () => {
   const [showStudentJoin, setShowStudentJoin] = useState(false);
   const [studentJoinCode, setStudentJoinCode] = useState('');
   const [studentJoinName, setStudentJoinName] = useState('');
+  const [adminTab, setAdminTab] = useState('skills');
+  const [skillSubmissions, setSkillSubmissions] = useState([]);
+  const [newSkillName, setNewSkillName] = useState('');
+  const [newSkillDescription, setNewSkillDescription] = useState('');
   const actionLabel = getActionLabel(isAdmin, isRegister);
   const roleLabel = getRoleLabel(isAdmin, role);
+
+  const myApprovedSkills = skillSubmissions.filter(
+    (s) => s.studentEmail === (authUser && authUser.email) && s.status === SKILL_STATUS.approved
+  );
+  const myPendingSkills = skillSubmissions.filter(
+    (s) => s.studentEmail === (authUser && authUser.email) && s.status === SKILL_STATUS.pending
+  );
+  const myRejectedSkills = skillSubmissions.filter(
+    (s) => s.studentEmail === (authUser && authUser.email) && s.status === SKILL_STATUS.rejected
+  );
+  const pendingForAdmin = skillSubmissions.filter((s) => s.status === SKILL_STATUS.pending);
+  const allApproved = skillSubmissions.filter((s) => s.status === SKILL_STATUS.approved);
+
+  const handleSubmitSkill = (e) => {
+    e.preventDefault();
+    if (!newSkillName.trim()) {
+      setStatusMessage('Skill name is required');
+      return;
+    }
+    const submission = {
+      id: `skill_${Date.now()}`,
+      skillName: newSkillName.trim(),
+      description: newSkillDescription.trim(),
+      studentEmail: authUser.email,
+      studentName: authUser.name || authUser.email,
+      status: SKILL_STATUS.pending,
+      tier: null,
+      submittedAt: new Date().toISOString(),
+    };
+    setSkillSubmissions([...skillSubmissions, submission]);
+    setStatusMessage(`Skill "${submission.skillName}" submitted for admin approval`);
+    setNewSkillName('');
+    setNewSkillDescription('');
+  };
+
+  const handleApproveSkill = (skillId, tier) => {
+    setSkillSubmissions(
+      skillSubmissions.map((s) =>
+        s.id === skillId ? { ...s, status: SKILL_STATUS.approved, tier } : s
+      )
+    );
+    const skill = skillSubmissions.find((s) => s.id === skillId);
+    setStatusMessage(`Approved "${skill.skillName}" as ${SKILL_TIERS[tier].label}`);
+  };
+
+  const handleRejectSkill = (skillId) => {
+    setSkillSubmissions(
+      skillSubmissions.map((s) =>
+        s.id === skillId ? { ...s, status: SKILL_STATUS.rejected } : s
+      )
+    );
+    const skill = skillSubmissions.find((s) => s.id === skillId);
+    setStatusMessage(`Rejected "${skill.skillName}"`);
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -112,7 +174,7 @@ const App = () => {
           </svg>
           <span className="brand-text">{getBrandText(authUser)}</span>
         </div>
-        <div className={`nav-links ${authUser && (authUser.role === 'lecturer' || authUser.role === 'student') ? 'nav-lecturer' : ''}`}>
+        <div className={`nav-links ${authUser && (authUser.role === 'lecturer' || authUser.role === 'student' || authUser.role === 'admin') ? 'nav-lecturer' : ''}`}>
           {authUser && authUser.role === 'lecturer' ? (
             <>
               <button
@@ -373,6 +435,22 @@ const App = () => {
                           <div className="detail-value">{authUser.role}</div>
                         </div>
                       </div>
+
+                      <div className="detail-item">
+                        <div className="detail-icon">⭐</div>
+                        <div className="detail-info">
+                          <div className="detail-label">Student Rating</div>
+                          <div className="detail-value">{calculateStudentRating(myApprovedSkills)}%</div>
+                        </div>
+                      </div>
+
+                      <div className="detail-item">
+                        <div className="detail-icon">🏆</div>
+                        <div className="detail-info">
+                          <div className="detail-label">Approved Skills</div>
+                          <div className="detail-value">{myApprovedSkills.length}</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -458,12 +536,94 @@ const App = () => {
 
           {studentTab === 'skills' && (
             <section id="skills" className="skills-section">
-              <h2>Skills</h2>
-              <div className="skills-grid">
-                <div className="skill-pill">Machine Learning</div>
-                <div className="skill-pill">Web Dev</div>
-                <div className="skill-pill">Data Science</div>
+              <div className="skills-header">
+                <h2>My Skills</h2>
+                <div className="student-rating-display">
+                  <span className="rating-label">Student Rating</span>
+                  <span className="rating-value">{calculateStudentRating(myApprovedSkills)}%</span>
+                </div>
               </div>
+
+              {statusMessage && <div className="status-alert">{statusMessage}</div>}
+
+              <div className="skill-submit-form-container">
+                <div className="skill-submit-form">
+                  <h3>Submit a New Skill</h3>
+                  <form onSubmit={handleSubmitSkill}>
+                    <label>
+                      Skill Name
+                      <input
+                        type="text"
+                        placeholder="e.g. React, Python, Data Analysis..."
+                        value={newSkillName}
+                        onChange={(e) => setNewSkillName(e.target.value)}
+                        required
+                      />
+                    </label>
+                    <label>
+                      Description (optional)
+                      <input
+                        type="text"
+                        placeholder="Brief description of your proficiency..."
+                        value={newSkillDescription}
+                        onChange={(e) => setNewSkillDescription(e.target.value)}
+                      />
+                    </label>
+                    <button type="submit" className="btn-submit">Submit for Approval</button>
+                  </form>
+                </div>
+              </div>
+
+              {myApprovedSkills.length > 0 && (
+                <div className="skills-category">
+                  <h3>Approved Skills</h3>
+                  <div className="skills-grid">
+                    {myApprovedSkills.map((skill) => {
+                      const tierInfo = getSkillTierBadge(skill.tier);
+                      return (
+                        <div key={skill.id} className={`skill-pill-tier skill-tier-${skill.tier}`}>
+                          <span className="skill-pill-name">{skill.skillName}</span>
+                          <span className="skill-tier-badge" style={{ background: tierInfo.color }}>
+                            {tierInfo.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {myPendingSkills.length > 0 && (
+                <div className="skills-category">
+                  <h3>Pending Approval</h3>
+                  <div className="skills-grid">
+                    {myPendingSkills.map((skill) => (
+                      <div key={skill.id} className="skill-pill-tier skill-tier-pending">
+                        <span className="skill-pill-name">{skill.skillName}</span>
+                        <span className="skill-tier-badge skill-badge-pending">Pending</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {myRejectedSkills.length > 0 && (
+                <div className="skills-category">
+                  <h3>Rejected</h3>
+                  <div className="skills-grid">
+                    {myRejectedSkills.map((skill) => (
+                      <div key={skill.id} className="skill-pill-tier skill-tier-rejected">
+                        <span className="skill-pill-name">{skill.skillName}</span>
+                        <span className="skill-tier-badge skill-badge-rejected">Rejected</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {myApprovedSkills.length === 0 && myPendingSkills.length === 0 && myRejectedSkills.length === 0 && (
+                <p className="empty-state">No skills submitted yet. Submit your first skill above!</p>
+              )}
             </section>
           )}
 
@@ -679,12 +839,25 @@ const App = () => {
 
           {lecturerTab === 'skills' && (
             <section id="skills" className="skills-section">
-              <h2>Skills</h2>
-              <div className="skills-grid">
-                <div className="skill-pill">Machine Learning</div>
-                <div className="skill-pill">Web Dev</div>
-                <div className="skill-pill">Data Science</div>
-              </div>
+              <h2>Skills Overview</h2>
+              {allApproved.length > 0 ? (
+                <div className="skills-grid">
+                  {allApproved.map((skill) => {
+                    const tierInfo = getSkillTierBadge(skill.tier);
+                    return (
+                      <div key={skill.id} className={`skill-pill-tier skill-tier-${skill.tier}`}>
+                        <span className="skill-pill-name">{skill.skillName}</span>
+                        <span className="skill-tier-badge" style={{ background: tierInfo.color }}>
+                          {tierInfo.label}
+                        </span>
+                        <span className="skill-pill-student">{skill.studentName}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="empty-state">No approved skills yet.</p>
+              )}
             </section>
           )}
 
@@ -713,6 +886,116 @@ const App = () => {
                   </div>
                 ))}
               </div>
+            </section>
+          )}
+        </>
+      )}
+
+      {/* Admin portal */}
+      {authUser && authUser.role === 'admin' && (
+        <>
+          <nav className="admin-sub-nav">
+            <button
+              className={`nav-action ${adminTab === 'skills' ? 'selected' : ''}`}
+              type="button"
+              onClick={() => setAdminTab('skills')}
+            >
+              <span className="nav-label">Skill Approvals {pendingForAdmin.length > 0 && <span className="pending-count">{pendingForAdmin.length}</span>}</span>
+            </button>
+            <button
+              className={`nav-action ${adminTab === 'all-skills' ? 'selected' : ''}`}
+              type="button"
+              onClick={() => setAdminTab('all-skills')}
+            >
+              <span className="nav-label">All Approved Skills</span>
+            </button>
+          </nav>
+
+          {adminTab === 'skills' && (
+            <section className="admin-section">
+              <h2>Pending Skill Approvals</h2>
+              {statusMessage && <div className="status-alert">{statusMessage}</div>}
+
+              {pendingForAdmin.length === 0 ? (
+                <p className="empty-state">No pending skill submissions.</p>
+              ) : (
+                <div className="admin-skills-list">
+                  {pendingForAdmin.map((skill) => (
+                    <div key={skill.id} className="admin-skill-card">
+                      <div className="admin-skill-card-inner">
+                        <div className="admin-skill-info">
+                          <h3 className="admin-skill-name">{skill.skillName}</h3>
+                          {skill.description && (
+                            <p className="admin-skill-desc">{skill.description}</p>
+                          )}
+                          <div className="admin-skill-meta">
+                            <span>Submitted by: <strong>{skill.studentName}</strong></span>
+                            <span>{skill.studentEmail}</span>
+                          </div>
+                        </div>
+                        <div className="admin-skill-actions">
+                          <span className="tier-label">Assign tier & approve:</span>
+                          <div className="tier-buttons">
+                            {Object.entries(SKILL_TIERS).map(([key, config]) => (
+                              <button
+                                key={key}
+                                className={`btn-tier btn-tier-${key}`}
+                                style={{ borderColor: config.color, color: config.color }}
+                                onClick={() => handleApproveSkill(skill.id, key)}
+                              >
+                                {config.label}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            className="btn-reject"
+                            onClick={() => handleRejectSkill(skill.id)}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {adminTab === 'all-skills' && (
+            <section className="admin-section">
+              <h2>All Approved Skills</h2>
+              {allApproved.length === 0 ? (
+                <p className="empty-state">No skills have been approved yet.</p>
+              ) : (
+                <table className="admin-skills-table">
+                  <thead>
+                    <tr>
+                      <th>Skill</th>
+                      <th>Student</th>
+                      <th>Tier</th>
+                      <th>Weight</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allApproved.map((skill) => {
+                      const tierInfo = getSkillTierBadge(skill.tier);
+                      return (
+                        <tr key={skill.id}>
+                          <td>{skill.skillName}</td>
+                          <td>{skill.studentName}</td>
+                          <td>
+                            <span className="skill-tier-badge" style={{ background: tierInfo.color }}>
+                              {tierInfo.label}
+                            </span>
+                          </td>
+                          <td>{SKILL_TIERS[skill.tier]?.weight || 0}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </section>
           )}
         </>

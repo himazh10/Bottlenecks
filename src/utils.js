@@ -70,6 +70,7 @@ export const getProfileInitials = (nameOrEmail) => {
 export const getBrandText = (authUser) => {
   if (authUser && authUser.role === 'lecturer') return 'Lecturer Portal';
   if (authUser && authUser.role === 'student') return 'Student Portal';
+  if (authUser && authUser.role === 'admin') return 'Admin Portal';
   return 'Bottlenecks';
 };
 
@@ -90,4 +91,33 @@ export const loadAuthUser = () => {
   } catch (e) {
     return null;
   }
+};
+
+export const SKILL_TIERS = {
+  common: { label: 'Common', weight: 1, color: '#8b9cc7' },
+  rare: { label: 'Rare', weight: 3, color: '#6b67ff' },
+  diamond: { label: 'Diamond', weight: 5, color: '#30d6ff' },
+};
+
+export const SKILL_STATUS = {
+  pending: 'pending',
+  approved: 'approved',
+  rejected: 'rejected',
+};
+
+export const calculateStudentRating = (approvedSkills) => {
+  if (!approvedSkills || approvedSkills.length === 0) return 0;
+  const totalWeight = approvedSkills.reduce((sum, skill) => {
+    const tier = SKILL_TIERS[skill.tier];
+    return sum + (tier ? tier.weight : 0);
+  }, 0);
+  const maxPossible = approvedSkills.length * SKILL_TIERS.diamond.weight;
+  const normalized = (totalWeight / maxPossible) * 100;
+  return Math.round(normalized * 10) / 10;
+};
+
+export const getSkillTierBadge = (tier) => {
+  const config = SKILL_TIERS[tier];
+  if (!config) return { label: 'Unknown', color: '#555' };
+  return config;
 };
