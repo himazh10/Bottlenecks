@@ -13,6 +13,7 @@ const App = () => {
     try {
       return JSON.parse(localStorage.getItem('authUser')) || null;
     } catch (e) {
+      console.error('Failed to read auth state from localStorage:', e);
       return null;
     }
   });
@@ -71,26 +72,47 @@ const App = () => {
     const formData = new FormData(form);
     const payload = Object.fromEntries(formData.entries());
 
+    if (!payload.email) {
+      setStatusMessage('Email is required.');
+      return;
+    }
+
     const userRole = isAdmin ? 'admin' : role;
     const user = {
       role: userRole,
       email: payload.email,
-      name: payload.name || (payload.email ? payload.email.split('@')[0] : ''),
+      name: payload.name || payload.email.split('@')[0],
     };
     setAuthUser(user);
-    localStorage.setItem('authUser', JSON.stringify(user));
+    try {
+      localStorage.setItem('authUser', JSON.stringify(user));
+    } catch (e) {
+      console.error('Failed to save auth state to localStorage:', e);
+      setStatusMessage('Warning: your session could not be saved and will not persist after refresh.');
+      return;
+    }
     setStatusMessage(`${user.role} ${isAdmin ? 'login' : isRegister ? 'registration' : 'login'} successful for ${user.name || user.email}.`);
     form.reset();
     setActiveTab(null);
   };
 
   useEffect(() => {
-    if (authUser) localStorage.setItem('authUser', JSON.stringify(authUser));
+    if (authUser) {
+      try {
+        localStorage.setItem('authUser', JSON.stringify(authUser));
+      } catch (e) {
+        console.error('Failed to persist auth state to localStorage:', e);
+      }
+    }
   }, [authUser]);
 
   const handleLogout = () => {
     setAuthUser(null);
-    localStorage.removeItem('authUser');
+    try {
+      localStorage.removeItem('authUser');
+    } catch (e) {
+      console.error('Failed to clear auth state from localStorage:', e);
+    }
     setStatusMessage('Signed out');
     setRole('student');
   };
