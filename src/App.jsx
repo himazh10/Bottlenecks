@@ -1,69 +1,35 @@
 import { useState, useEffect } from 'react';
-
-const tabConfig = [
-  { key: 'login', label: 'Login' },
-  { key: 'register', label: 'Register' },
-];
+import {
+  tabConfig,
+  defaultProjects,
+  generateProjectCode,
+  buildUserFromPayload,
+  buildStatusMessage,
+  getProfileInitials,
+  getBrandText,
+  getActionLabel,
+  getRoleLabel,
+  loadAuthUser,
+} from './utils.js';
 
 const App = () => {
   const [activeTab, setActiveTab] = useState(null);
   const [role, setRole] = useState('student');
   const [statusMessage, setStatusMessage] = useState('');
-  const [authUser, setAuthUser] = useState(() => {
-    try {
-      return JSON.parse(localStorage.getItem('authUser')) || null;
-    } catch (e) {
-      return null;
-    }
-  });
+  const [authUser, setAuthUser] = useState(() => loadAuthUser());
 
   const isAdmin = activeTab === 'admin-login';
   const isRegister = activeTab === 'register';
   const [lecturerTab, setLecturerTab] = useState('profile');
   const [studentTab, setStudentTab] = useState('profile');
-  const [projects, setProjects] = useState([
-    {
-      id: 1,
-      name: 'Web Development Bootcamp',
-      code: 'WDB2026',
-      description: 'Spring 2026 web dev project',
-      status: 'ongoing',
-      archived: false,
-      students: [
-        { id: 's1', name: 'Maya Kim', skills: { 'Web Dev': 4, 'React': 5 } },
-        { id: 's2', name: 'Jon Lee', skills: { 'Web Dev': 3, 'CSS': 4 } },
-      ],
-    },
-    {
-      id: 2,
-      name: 'AI Research Initiative',
-      code: 'AIR2026',
-      description: 'Machine learning research project',
-      status: 'ongoing',
-      archived: false,
-      students: [
-        { id: 's3', name: 'Aisha Khan', skills: { 'ML': 5, 'Python': 5 } },
-      ],
-    },
-    {
-      id: 3,
-      name: 'Mobile App Development',
-      code: 'MAD2026',
-      description: 'Cross-platform app development',
-      status: 'archived',
-      archived: true,
-      students: [
-        { id: 's4', name: 'Liam Chen', skills: { 'Mobile': 4, 'UX': 3 } },
-      ],
-    },
-  ]);
+  const [projects, setProjects] = useState(defaultProjects);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [newProjectForm, setNewProjectForm] = useState({ name: '', description: '' });
   const [showStudentJoin, setShowStudentJoin] = useState(false);
   const [studentJoinCode, setStudentJoinCode] = useState('');
   const [studentJoinName, setStudentJoinName] = useState('');
-  const actionLabel = isAdmin ? 'Sign in as Admin' : isRegister ? 'Create account' : 'Log in';
-  const roleLabel = isAdmin ? 'Admin' : role === 'student' ? 'Student' : 'Lecturer';
+  const actionLabel = getActionLabel(isAdmin, isRegister);
+  const roleLabel = getRoleLabel(isAdmin, role);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -71,15 +37,10 @@ const App = () => {
     const formData = new FormData(form);
     const payload = Object.fromEntries(formData.entries());
 
-    const userRole = isAdmin ? 'admin' : role;
-    const user = {
-      role: userRole,
-      email: payload.email,
-      name: payload.name || (payload.email ? payload.email.split('@')[0] : ''),
-    };
+    const user = buildUserFromPayload(payload, isAdmin, role);
     setAuthUser(user);
     localStorage.setItem('authUser', JSON.stringify(user));
-    setStatusMessage(`${user.role} ${isAdmin ? 'login' : isRegister ? 'registration' : 'login'} successful for ${user.name || user.email}.`);
+    setStatusMessage(buildStatusMessage(user, isAdmin, isRegister));
     form.reset();
     setActiveTab(null);
   };
@@ -95,14 +56,6 @@ const App = () => {
     setRole('student');
   };
 
-  const generateProjectCode = () => {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 8; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-  };
 
   const handleCreateProject = (e) => {
     e.preventDefault();
@@ -146,7 +99,7 @@ const App = () => {
     <div className="page-shell">
       <div className="background-lights"></div>
       <nav className="floating-nav">
-        <div className="brand" aria-label={authUser && authUser.role === 'lecturer' ? 'Lecturer Portal' : authUser && authUser.role === 'student' ? 'Student Portal' : 'Bottlenecks'}>
+        <div className="brand" aria-label={getBrandText(authUser)}>
           <svg className="brand-mark" width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <defs>
               <linearGradient id="g1" x1="0" x2="1">
@@ -157,7 +110,7 @@ const App = () => {
             <rect x="2" y="2" width="20" height="20" rx="5" fill="url(#g1)" opacity="0.95" />
             <path d="M7 9c1.5-2 5-2 6 0 1 2 1 6-3 8" stroke="#fff" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
           </svg>
-          <span className="brand-text">{authUser && authUser.role === 'lecturer' ? 'Lecturer Portal' : authUser && authUser.role === 'student' ? 'Student Portal' : 'Bottlenecks'}</span>
+          <span className="brand-text">{getBrandText(authUser)}</span>
         </div>
         <div className={`nav-links ${authUser && (authUser.role === 'lecturer' || authUser.role === 'student') ? 'nav-lecturer' : ''}`}>
           {authUser && authUser.role === 'lecturer' ? (
@@ -283,7 +236,7 @@ const App = () => {
             <>
               {/* removed duplicate Projects link — primary nav already contains Projects for lecturers */}
               <div className="profile-inline">
-                <div className="profile-badge">{(authUser.name || authUser.email || 'User').split(' ')[0].slice(0,2).toUpperCase()}</div>
+                <div className="profile-badge">{getProfileInitials(authUser.name || authUser.email || 'User')}</div>
                 <div className="profile-info">
                   <div className="profile-name">{authUser.name || authUser.email}</div>
                   <div className="profile-role">{authUser.role}</div>
@@ -391,7 +344,7 @@ const App = () => {
                     </svg>
                   </div>
 
-                  <div className="profile-avatar-large">{(authUser.name || authUser.email || 'St').split(' ')[0].slice(0,2).toUpperCase()}</div>
+                  <div className="profile-avatar-large">{getProfileInitials(authUser.name || authUser.email || 'St')}</div>
 
                   <div className="profile-card-content">
                     <h2 className="profile-card-title">Student Profile</h2>
@@ -559,7 +512,7 @@ const App = () => {
                     </svg>
                   </div>
                   
-                  <div className="profile-avatar-large">{(authUser.name || authUser.email || 'Lec').split(' ')[0].slice(0,2).toUpperCase()}</div>
+                  <div className="profile-avatar-large">{getProfileInitials(authUser.name || authUser.email || 'Lec')}</div>
                   
                   <div className="profile-card-content">
                     <h2 className="profile-card-title">Lecturer Profile</h2>
