@@ -301,43 +301,66 @@ describe('calculateStudentRating', () => {
     expect(calculateStudentRating(undefined)).toBe(0);
   });
 
-  it('returns 100 for all diamond skills', () => {
+  it('returns 50 for all diamond skills (only skill score)', () => {
     const skills = [
       { tier: 'diamond' },
       { tier: 'diamond' },
     ];
-    expect(calculateStudentRating(skills)).toBe(100);
+    expect(calculateStudentRating(skills)).toBe(50);
   });
 
-  it('returns 20 for all common skills', () => {
+  it('returns 10 for all common skills (only skill score)', () => {
     const skills = [
       { tier: 'common' },
       { tier: 'common' },
     ];
-    expect(calculateStudentRating(skills)).toBe(20);
+    expect(calculateStudentRating(skills)).toBe(10);
   });
 
-  it('returns 60 for all rare skills', () => {
+  it('returns 30 for all rare skills (only skill score)', () => {
     const skills = [
       { tier: 'rare' },
       { tier: 'rare' },
     ];
-    expect(calculateStudentRating(skills)).toBe(60);
+    expect(calculateStudentRating(skills)).toBe(30);
   });
 
-  it('calculates mixed tiers correctly', () => {
+  it('calculates mixed tiers correctly (only skill score)', () => {
     const skills = [
       { tier: 'common' },
       { tier: 'rare' },
       { tier: 'diamond' },
     ];
-    const expected = ((1 + 3 + 5) / (3 * 5)) * 100;
+    const skillScore = ((1 + 3 + 5) / (3 * 5)) * 100;
+    const expected = 0.5 * skillScore;
     expect(calculateStudentRating(skills)).toBe(Math.round(expected * 10) / 10);
   });
 
   it('handles unknown tiers as 0 weight', () => {
     const skills = [{ tier: 'mythic' }];
     expect(calculateStudentRating(skills)).toBe(0);
+  });
+
+  it('calculates full weighted rating correctly', () => {
+    const data = {
+      approvedSkills: [{ tier: 'diamond' }], // skillScore = 100
+      peerValidation: 80,
+      projectPerformance: 90,
+      contributionScore: 70,
+    };
+    // rating = 0.5*100 + 0.2*80 + 0.2*90 + 0.1*70 = 50 + 16 + 18 + 7 = 91
+    expect(calculateStudentRating(data)).toBe(91);
+  });
+
+  it('calculates rating with partial data', () => {
+    const data = {
+      approvedSkills: [],
+      peerValidation: 50,
+      projectPerformance: 50,
+      contributionScore: 50,
+    };
+    // rating = 0.5*0 + 0.2*50 + 0.2*50 + 0.1*50 = 0 + 10 + 10 + 5 = 25
+    expect(calculateStudentRating(data)).toBe(25);
   });
 });
 
