@@ -105,6 +105,12 @@ export const SKILL_STATUS = {
   rejected: 'rejected',
 };
 
+export const getSkillTierBadge = (tier) => {
+  const config = SKILL_TIERS[tier];
+  if (!config) return { label: 'Unknown', color: '#555' };
+  return config;
+};
+
 export const calculateStudentRating = (approvedSkills, peerValidationScore, projectPerformanceScore, contributionScore) => {
   // Assuming inputs are normalized 0-100 values
   const skillScore = approvedSkills && approvedSkills.length > 0 ? 
