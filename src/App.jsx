@@ -14,6 +14,7 @@ import {
   SKILL_STATUS,
   calculateStudentRating,
   getSkillTierBadge,
+  generateGroups,
 } from './utils.js';
 
 const App = () => {
@@ -29,6 +30,10 @@ const App = () => {
   const [projects, setProjects] = useState(defaultProjects);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [newProjectForm, setNewProjectForm] = useState({ name: '', description: '' });
+  const [showCreateGroups, setShowCreateGroups] = useState(false);
+  const [teamSize, setTeamSize] = useState(2);
+  const [preferredSkills, setPreferredSkills] = useState([]);
+  const [newSkillForGroup, setNewSkillForGroup] = useState('');
   const [showStudentJoin, setShowStudentJoin] = useState(false);
   const [studentJoinCode, setStudentJoinCode] = useState('');
   const [studentJoinName, setStudentJoinName] = useState('');
@@ -38,6 +43,9 @@ const App = () => {
   const [newSkillDescription, setNewSkillDescription] = useState('');
   const [showAddSkill, setShowAddSkill] = useState(false);
   const [registeredUsers, setRegisteredUsers] = useState([]);
+  const [tasks, setTasks] = useState({}); // { groupId: [ {id, studentId, desc, status} ] }
+  const [peerFlags, setPeerFlags] = useState({}); // { studentEmail: [flaggedByStudentEmails] }
+  const [peerValidations, setPeerValidations] = useState({}); // { skillId: [validatedByStudentEmails] }
   const actionLabel = getActionLabel(isAdmin, isRegister);
   const roleLabel = getRoleLabel(isAdmin, role);
 
@@ -165,8 +173,47 @@ const App = () => {
     setSelectedProject(project);
   };
 
-  const handleCloseManage = () => {
-    setSelectedProject(null);
+  const handleCreateGroups = (e) => {
+    e.preventDefault();
+    const groups = generateGroups(selectedProject.students, teamSize, []);
+    setProjects(projects.map(p => p.id === selectedProject.id ? { ...p, groups } : p));
+    setSelectedProject({ ...selectedProject, groups });
+    setStatusMessage(`Created ${groups.length} groups.`);
+    setShowCreateGroups(false);
+  };
+
+  const voteForLeader = (groupId, candidateId) => {
+    const updatedProjects = projects.map(p => {
+      if (!p.groups) return p;
+      const groupIndex = p.groups.findIndex(g => g.students.some(s => s.id === authUser.id));
+      if (groupIndex === -1) return p;
+      
+      const newGroups = [...p.groups];
+      const group = newGroups[groupIndex];
+      group.votes[authUser.id] = candidateId;
+      
+      // Calculate votes
+      const voteCounts = {};
+      Object.values(group.votes).forEach(v => voteCounts[v] = (voteCounts[v] || 0) + 1);
+      const maxVotes = Math.max(...Object.values(voteCounts));
+      const winners = Object.keys(voteCounts).filter(id => voteCounts[id] === maxVotes);
+      
+      if (winners.length === 1 && Object.keys(group.votes).length === group.students.length) {
+        group.leader = winners[0];
+      } else if (winners.length > 1 && Object.keys(group.votes).length === group.students.length) {
+        group.runoffCandidates = winners;
+      }
+      
+      return { ...p, groups: newGroups };
+    });
+    setProjects(updatedProjects);
+  };
+
+  const handleAddTask = (groupId, taskDesc) => {
+    setTasks(prev => ({
+      ...prev,
+      [groupId]: [...(prev[groupId] || []), { id: `t_${Date.now()}`, desc: taskDesc, status: 'pending' }]
+    }));
   };
 
   return (
@@ -449,13 +496,12 @@ const App = () => {
                       </div>
 
                       <div className="detail-item">
-                        <div className="detail-icon">⭐</div>
-                        <div className="detail-info">
-                          <div className="detail-label">Student Rating</div>
-                          <div className="detail-value">{calculateStudentRating(myApprovedSkills)}%</div>
-                        </div>
+                      <div className="detail-icon">⭐</div>
+                      <div className="detail-info">
+                        <div className="detail-label">Student Rating</div>
+                        <div className="detail-value">{calculateStudentRating(myApprovedSkills, 0, 0, 0)}%</div>
                       </div>
-
+                      </div>
                       <div className="detail-item">
                         <div className="detail-icon">🏆</div>
                         <div className="detail-info">
@@ -514,34 +560,48 @@ const App = () => {
                 </div>
               )}
 
-              <div className="projects-grid">
-                {projects.filter(p => !p.archived).map((project) => (
-                  <div key={project.id} className="project-card-floating">
-                    <div className="project-card-glow"></div>
-                    <div className="project-card-inner">
-                      <div className="project-status-badge">{project.archived ? 'archived' : project.status}</div>
-                      <h3 className="project-card-title">{project.name}</h3>
-                      <p className="project-card-description">{project.description}</p>
+                  <div className="projects-grid">
+                {projects.filter(p => !p.archived).map((project) => {
+                  const group = project.groups?.find(g => g.students.some(s => s.id === authUser.id));
+                  return (
+                    <div key={project.id} className="project-card-floating">
+                      <div className="project-card-glow"></div>
+                      <div className="project-card-inner">
+                        <div className="project-status-badge">{project.archived ? 'archived' : project.status}</div>
+                        <h3 className="project-card-title">{project.name}</h3>
+                        
+                        {group && (
+                          <div className="group-info">
+                            <h4>My Group Members</h4>
+                            <ul>{group.students.map(s => <li key={s.id}>{s.name} {s.id === group.leader && '👑'}</li>)}</ul>
+                            
+                            {!group.leader && group.runoffCandidates.length === 0 && (
+                              <div className="voting">
+                                <p>Vote for Leader:</p>
+                                {group.students.map(s => <button key={s.id} onClick={() => voteForLeader(project.id, s.id)}>{s.name}</button>)}
+                              </div>
+                            )}
 
-                      <div className="project-code-section">
-                        <div className="code-label">Join Code</div>
-                        <div className="code-display">{project.code}</div>
-                      </div>
-
-                      <div className="project-stats">
-                        <div className="stat">
-                          <span className="stat-icon">👥</span>
-                          <span className="stat-value">{(project.students || []).length} students</span>
+                            {group.leader === authUser.id && (
+                              <div className="task-assignment">
+                                <input id="new-task" placeholder="Task description..." />
+                                <button onClick={() => handleAddTask(group.students[0].id, document.getElementById('new-task').value)}>Assign</button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        
+                        <div className="project-stats">
+                          <div className="stat">
+                            <span className="stat-icon">👥</span>
+                            <span className="stat-value">{(project.students || []).length} students</span>
+                          </div>
                         </div>
-                        <div className="stat">
-                          <span className="stat-icon">📋</span>
-                          <span className="stat-value">{project.archived ? 'Archived' : 'Active'}</span>
-                        </div>
-                      </div>
 
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}
@@ -673,12 +733,15 @@ const App = () => {
                       <p className="project-card-description">{p.description}</p>
                       <div className="project-code-section">
                         <div className="code-label">Join Code</div>
-                        <div className="code-display">{p.code}</div>
-                      </div>
-                      <div className="project-stats">
-                        <div className="stat">
-                          <span className="stat-icon">👥</span>
-                          <span className="stat-value">{(p.students||[]).length} students</span>
+                        <div className="project-code-section">
+                          <div className="code-label">Join Code</div>
+                          <div className="code-display">{p.code}</div>
+                        </div>
+                        <div className="project-stats">
+                          <div className="stat">
+                            <span className="stat-icon">👥</span>
+                            <span className="stat-value">{(p.students||[]).length} students</span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -803,6 +866,52 @@ const App = () => {
                   </div>
 
                   <div className="manage-body">
+                    <div className="manage-actions">
+                      <button className="btn-submit" onClick={() => setShowCreateGroups(true)}>Create Groups</button>
+                    </div>
+
+                    {showCreateGroups && (
+                      <div className="create-project-form-container">
+                        <div className="create-project-form">
+                          <h3>Create Teams</h3>
+                          <form onSubmit={handleCreateGroups}>
+                            <label>Team Size</label>
+                            <input 
+                              type="number" 
+                              value={teamSize} 
+                              onChange={(e) => setTeamSize(parseInt(e.target.value))} 
+                              min="2" 
+                              max={selectedProject.students.length}
+                            />
+                            
+                            <label>Preferred Skills (Select all that apply)</label>
+                            <select multiple value={preferredSkills} onChange={(e) => setPreferredSkills(Array.from(e.target.selectedOptions, option => option.value))} style={{width:'100%', marginBottom:'1rem'}}>
+                              {allApproved.map(s => <option key={s.id} value={s.skillName}>{s.skillName}</option>)}
+                            </select>
+
+                            <label>Add New Skill</label>
+                            <input type="text" value={newSkillForGroup} onChange={(e) => setNewSkillForGroup(e.target.value)} placeholder="Type new skill..." />
+                            
+                            <div className="form-actions">
+                              <button type="submit" className="btn-submit">Generate</button>
+                              <button type="button" className="btn-cancel" onClick={() => setShowCreateGroups(false)}>Cancel</button>
+                            </div>
+                          </form>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="groups-list">
+                      {(selectedProject.groups || []).map((group, i) => (
+                        <div key={i} className="group-card">
+                          <h4>Team {i + 1}</h4>
+                          <ul>
+                            {group.students.map(s => <li key={s.id}>{s.name}</li>)}
+                          </ul>
+                        </div>
+                      ))}
+                    </div>
+
                     <table className="students-table">
                       <thead>
                         <tr>

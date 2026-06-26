@@ -105,19 +105,48 @@ export const SKILL_STATUS = {
   rejected: 'rejected',
 };
 
-export const calculateStudentRating = (approvedSkills) => {
-  if (!approvedSkills || approvedSkills.length === 0) return 0;
-  const totalWeight = approvedSkills.reduce((sum, skill) => {
-    const tier = SKILL_TIERS[skill.tier];
-    return sum + (tier ? tier.weight : 0);
-  }, 0);
-  const maxPossible = approvedSkills.length * SKILL_TIERS.diamond.weight;
-  const normalized = (totalWeight / maxPossible) * 100;
-  return Math.round(normalized * 10) / 10;
+export const calculateStudentRating = (approvedSkills, peerValidationScore, projectPerformanceScore, contributionScore) => {
+  // Assuming inputs are normalized 0-100 values
+  const skillScore = approvedSkills && approvedSkills.length > 0 ? 
+    approvedSkills.reduce((sum, s) => sum + (s.tier === 'diamond' ? 5 : s.tier === 'rare' ? 3 : 1), 0) / (approvedSkills.length * 5) * 100 : 0;
+    
+  const rating = (0.5 * skillScore) + (0.2 * peerValidationScore) + (0.2 * projectPerformanceScore) + (0.1 * contributionScore);
+  
+  return Math.round(rating * 10) / 10;
 };
 
-export const getSkillTierBadge = (tier) => {
-  const config = SKILL_TIERS[tier];
-  if (!config) return { label: 'Unknown', color: '#555' };
-  return config;
+export const generateGroups = (students, teamSize, preferredSkills) => {
+  // 1. Calculate ratings for each student
+  // We assume students have a 'skills' object { skillName: level }
+  // We'll use the level as a proxy for rating if skill tier data is unavailable.
+  const getRating = (student) => {
+    const skills = student.skills || {};
+    const levels = Object.values(skills);
+    if (levels.length === 0) return 0;
+    return levels.reduce((a, b) => a + b, 0) / levels.length;
+  };
+
+  const studentsWithRatings = students.map(s => ({ ...s, rating: getRating(s) }));
+  
+  // 2. Sort by rating descending
+  studentsWithRatings.sort((a, b) => b.rating - a.rating);
+  
+  // 3. Create teams
+  const numTeams = Math.ceil(students.length / teamSize);
+  const teams = Array.from({ length: numTeams }, () => ({ 
+    students: [], 
+    rating: 0, 
+    leader: null, 
+    votes: {}, // { studentId: votedForStudentId }
+    runoffCandidates: [] // List of student IDs for runoff if tie occurs
+  }));
+  
+  // 4. Distribute (High-rated student to lowest-rated team)
+  studentsWithRatings.forEach(student => {
+    teams.sort((a, b) => a.rating - b.rating);
+    teams[0].students.push(student);
+    teams[0].rating += student.rating;
+  });
+  
+  return teams;
 };
