@@ -13,6 +13,8 @@ import {
   SKILL_TIERS,
   SKILL_STATUS,
   calculateStudentRating,
+  calculateStudentRatingFromLevels,
+  createStudentGroups,
   getSkillTierBadge,
 } from './utils.js';
 
@@ -338,6 +340,43 @@ describe('calculateStudentRating', () => {
   it('handles unknown tiers as 0 weight', () => {
     const skills = [{ tier: 'mythic' }];
     expect(calculateStudentRating(skills)).toBe(0);
+  });
+});
+
+describe('calculateStudentRatingFromLevels', () => {
+  it('returns 0 when skills object is empty', () => {
+    expect(calculateStudentRatingFromLevels({})).toBe(0);
+  });
+
+  it('calculates percentage from skill levels', () => {
+    expect(calculateStudentRatingFromLevels({ React: 5, CSS: 3 })).toBe(80);
+  });
+
+  it('ignores invalid skill values', () => {
+    expect(calculateStudentRatingFromLevels({ Java: '4', Python: null })).toBe(40);
+  });
+});
+
+describe('createStudentGroups', () => {
+  it('creates groups based on team size and student skills', () => {
+    const students = [
+      { id: 's1', name: 'High', skills: { React: 5 } },
+      { id: 's2', name: 'Mid', skills: { Node: 3 } },
+      { id: 's3', name: 'Low', skills: { CSS: 2 } },
+    ];
+
+    const groups = createStudentGroups(students, 2, ['React']);
+    expect(groups).toHaveLength(2);
+    expect(groups[0].members.length + groups[1].members.length).toBe(3);
+    expect(groups[0].members.some((m) => m.name === 'High')).toBe(true);
+    expect(groups[1].members.some((m) => m.name === 'Mid' || m.name === 'Low')).toBe(true);
+  });
+
+  it('returns at least one group even if students fewer than team size', () => {
+    const students = [{ id: 's1', name: 'Solo', skills: { CSS: 4 } }];
+    const groups = createStudentGroups(students, 5);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].members).toHaveLength(1);
   });
 });
 

@@ -372,8 +372,171 @@ body {
 .skill-name { font-weight:700; color:#bfefff; min-width:90px; }
 .skill-stars { color: #ffd166; font-family: monospace; }
 
+.student-project-detail {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+.student-project-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  justify-content: space-between;
+}
+.student-project-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #e8f4ff;
+}
+.student-group-list {
+  display: grid;
+  gap: 1rem;
+}
+.group-card {
+  border-radius: 20px;
+  padding: 1.25rem;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(107,103,255,0.18);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.18);
+}
+.group-card.my-group {
+  border-color: #3fd9ff;
+  background: rgba(63,217,255,0.08);
+}
+.group-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.group-title {
+  display: block;
+  font-weight: 900;
+  color: #e8f4ff;
+}
+.group-meta {
+  display: block;
+  color: rgba(232,244,255,0.7);
+  margin-top: 0.25rem;
+  font-size: 0.95rem;
+}
+.group-status {
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.group-status-pending { background: rgba(255,255,255,0.08); color: #cbd6ff; }
+.group-status-runoff { background: rgba(255,215,0,0.14); color: #ffe87d; }
+.group-status-selected { background: rgba(63,217,255,0.16); color: #b8f7ff; }
+.leader-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-radius: 16px;
+  background: rgba(107,103,255,0.14);
+  color: #e8f4ff;
+  margin-bottom: 1rem;
+}
+.group-card-members {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.group-vote-panel {
+  padding: 1rem;
+  border-radius: 18px;
+  background: rgba(0,217,255,0.06);
+  border: 1px solid rgba(0,217,255,0.15);
+}
+.group-vote-intro {
+  display: grid;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+  color: #e8f4ff;
+}
+.group-vote-intro strong { font-size: 1rem; }
+.group-vote-intro span { color: rgba(232,244,255,0.75); font-size: 0.95rem; }
+.vote-count {
+  margin-bottom: 0.85rem;
+  color: rgba(232,244,255,0.9);
+  font-size: 0.95rem;
+}
+.group-vote-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.vote-button {
+  padding: 0.85rem 1rem;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(107,103,255,0.15));
+  color: #e8f4ff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+.vote-button:hover:not(:disabled) { transform: translateY(-1px); background: rgba(63,217,255,0.18); }
+.vote-button:disabled { opacity: 0.5; cursor: not-allowed; }
+.vote-result,
+.vote-note {
+  color: #dbeeff;
+  font-size: 0.95rem;
+}
+.vote-note { opacity: 0.9; }
+
 
 .nav-links {
+
+.group-tasks-panel {
+  margin-top: 1rem;
+  display: grid;
+  gap: 0.75rem;
+}
+.task-row {
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.02);
+  display: grid;
+  gap: 0.4rem;
+}
+.task-title { font-weight: 800; color: #e8f4ff; }
+.task-meta, .task-status, .task-confirm-count { color: rgba(232,244,255,0.75); font-size: 0.9rem; }
+.task-actions { display:flex; gap:0.5rem; margin-top:0.4rem; }
+.task-create-form { display:flex; gap:0.5rem; margin-top:0.6rem; }
+.task-create-form input, .task-create-form select { padding:0.6rem; border-radius:10px; border:1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.03); color:#e8f4ff; }
+.confirmed-badge { color: #c8f7e5; font-weight:700; }
+
+.btn-report {
+  margin-left: 0.6rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(255,80,80,0.12);
+  border: 1px solid rgba(255,80,80,0.18);
+  color: #ffd6d6;
+  font-weight:700;
+  cursor:pointer;
+}
+.btn-report:hover { background: rgba(255,80,80,0.18); }
+
+.btn-validate {
+  margin-left: 0.4rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(80,255,120,0.12);
+  border: 1px solid rgba(80,255,120,0.18);
+  color: #eaffef;
+  font-weight:700;
+  cursor:pointer;
+}
+.btn-validate:hover { background: rgba(80,255,120,0.18); }
   display: flex;
   gap: 0.85rem;
   align-items: center;

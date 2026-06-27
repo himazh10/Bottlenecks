@@ -87,6 +87,7 @@ export const getRoleLabel = (isAdmin, role) => {
 
 export const loadAuthUser = () => {
   try {
+    if (typeof localStorage === 'undefined') return null;
     return JSON.parse(localStorage.getItem('authUser')) || null;
   } catch (e) {
     return null;
@@ -114,6 +115,63 @@ export const calculateStudentRating = (approvedSkills) => {
   const maxPossible = approvedSkills.length * SKILL_TIERS.diamond.weight;
   const normalized = (totalWeight / maxPossible) * 100;
   return Math.round(normalized * 10) / 10;
+};
+
+export const calculateStudentRatingFromLevels = (skills = {}) => {
+  const levels = Object.values(skills || {}).map((value) => Number(value) || 0);
+  if (levels.length === 0) return 0;
+  const total = levels.reduce((sum, level) => sum + level, 0);
+  const maxTotal = levels.length * 5;
+  return maxTotal === 0 ? 0 : Math.round((total / maxTotal) * 100);
+};
+
+export const createStudentGroups = (students, teamSize, preferredSkills = []) => {
+  const normalizedStudents = students.map((student) => {
+    const skillNames = Object.keys(student.skills || {});
+    return {
+      ...student,
+      rating: calculateStudentRatingFromLevels(student.skills),
+      skillNames,
+    };
+  });
+
+  const groupCount = Math.max(1, Math.ceil(normalizedStudents.length / Math.max(1, teamSize)));
+  const groups = Array.from({ length: groupCount }, (_, index) => ({
+    id: `group_${Date.now()}_${index}`,
+    members: [],
+    rating: 0,
+    skillNames: [],
+    preferredSkills,
+    votes: {},
+    voteRound: 1,
+    voteStatus: 'pending',
+    candidateIds: [],
+    leaderIds: [],
+    tasks: [],
+  }));
+
+  const compareGroups = (a, b, student) => {
+    const overlapA = student.skillNames.filter((skill) => a.skillNames.includes(skill)).length;
+    const overlapB = student.skillNames.filter((skill) => b.skillNames.includes(skill)).length;
+    if (overlapA !== overlapB) return overlapA - overlapB;
+    if (a.rating !== b.rating) return a.rating - b.rating;
+    if (a.members.length !== b.members.length) return a.members.length - b.members.length;
+    return a.id.localeCompare(b.id);
+  };
+
+  const sortedStudents = [...normalizedStudents].sort((a, b) => b.rating - a.rating);
+
+  for (const student of sortedStudents) {
+    const candidateGroups = groups.filter((group) => group.members.length < teamSize);
+    if (candidateGroups.length === 0) break;
+    candidateGroups.sort((a, b) => compareGroups(a, b, student));
+    const target = candidateGroups[0];
+    target.members.push(student);
+    target.skillNames = Array.from(new Set([...target.skillNames, ...student.skillNames]));
+    target.rating = Math.round(target.members.reduce((sum, member) => sum + member.rating, 0) / target.members.length);
+  }
+
+  return groups;
 };
 
 export const getSkillTierBadge = (tier) => {
